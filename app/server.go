@@ -66,6 +66,7 @@ func main() {
 				} else {
 					sendError(conn, "unable to parse command.")
 				}
+				//
 			}
 
 		}(conn)
