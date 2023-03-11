@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
 
 	// Uncomment this block to pass the first stage
 	"net"
@@ -51,20 +50,31 @@ func main() {
 
 	defer l.Close()
 
-	var wg sync.WaitGroup
+	newConnection := make(chan net.Conn)
+	closeConnection := make(chan net.Conn)
+
+	go func() {
+		for {
+			conn, err := l.Accept()
+			nilChecker(err)
+			newConnection <- conn
+		}
+	}()
+
+	go func() {
+		_ = <-closeConnection
+	}()
 
 	for {
-		conn, err := l.Accept()
-		nilChecker(err)
-
-		// wg.Add(1)
-		go handleConnection(conn, &wg)
-
+		select {
+		case conn := <-newConnection:
+			go handleConnection(conn, &closeConnection)
+		}
 	}
 
 }
 
-func handleConnection(conn net.Conn, wg *sync.WaitGroup) {
+func handleConnection(conn net.Conn, closeConnection *chan net.Conn) {
 	defer conn.Close()
 	// defer wg.Done()
 
@@ -73,7 +83,11 @@ func handleConnection(conn net.Conn, wg *sync.WaitGroup) {
 	for {
 		buf := make([]byte, 1024)
 		data, err := conn.Read(buf)
-		nilChecker(err)
+		if err != nil {
+			sendError(conn, "command not found")
+			*closeConnection <- conn
+			return
+		}
 		if data == 0 {
 			// Connection closed by client.
 			fmt.Println("Client disconnected:", conn.RemoteAddr())
@@ -83,7 +97,8 @@ func handleConnection(conn net.Conn, wg *sync.WaitGroup) {
 			if strings.ToUpper(cmd) == "PING" {
 				sendMessage(conn, "PONG")
 			} else if strings.ToUpper(cmd) == "CLOSE" {
-				break
+				*closeConnection <- conn
+				return
 			} else {
 				sendError(conn, "command not found")
 			}
