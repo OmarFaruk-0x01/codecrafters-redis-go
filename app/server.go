@@ -66,7 +66,6 @@ func main() {
 				} else {
 					sendError(conn, "unable to parse command.")
 				}
-				// fmt.Printf("%v\n", ))
 			}
 
 		}(conn)
