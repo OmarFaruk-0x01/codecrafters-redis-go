@@ -58,7 +58,7 @@ func main() {
 				data, err := conn.Read(buf)
 				nilChecker(err)
 				if cmd, err := parser(string(buf[:data])); err == nil {
-					if cmd == "PING" {
+					if strings.ToUpper(cmd) == "PING" {
 						sendMessage(conn, "PONG")
 					} else {
 						sendError(conn, "command not found")
