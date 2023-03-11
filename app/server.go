@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 
 	// Uncomment this block to pass the first stage
 	"net"
@@ -39,6 +40,9 @@ func sendError(conn net.Conn, message string) {
 
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
+	// connections := map[string]net.Conn{}
+	// var rm sync.RWMutex
+
 	fmt.Println("Logs from your program will appear here!")
 
 	// Uncomment this block to pass the first stage
@@ -47,30 +51,45 @@ func main() {
 
 	defer l.Close()
 
+	var wg sync.WaitGroup
+
 	for {
 		conn, err := l.Accept()
 		nilChecker(err)
 
-		go func(conn net.Conn) {
-			buf := make([]byte, 1024)
-
-			for {
-				data, err := conn.Read(buf)
-				nilChecker(err)
-				if cmd, err := parser(string(buf[:data])); err == nil {
-					if strings.ToUpper(cmd) == "PING" {
-						sendMessage(conn, "PONG")
-					} else {
-						sendError(conn, "command not found")
-					}
-				} else {
-					sendError(conn, "unable to parse command.")
-				}
-				//
-			}
-
-		}(conn)
+		// wg.Add(1)
+		go handleConnection(conn, &wg)
 
 	}
 
+}
+
+func handleConnection(conn net.Conn, wg *sync.WaitGroup) {
+	defer conn.Close()
+	// defer wg.Done()
+
+	fmt.Println(conn.RemoteAddr())
+
+	for {
+		buf := make([]byte, 1024)
+		data, err := conn.Read(buf)
+		nilChecker(err)
+		if data == 0 {
+			// Connection closed by client.
+			fmt.Println("Client disconnected:", conn.RemoteAddr())
+			break
+		}
+		if cmd, err := parser(string(buf[:data])); err == nil {
+			if strings.ToUpper(cmd) == "PING" {
+				sendMessage(conn, "PONG")
+			} else if strings.ToUpper(cmd) == "CLOSE" {
+				break
+			} else {
+				sendError(conn, "command not found")
+			}
+		} else {
+			sendError(conn, "unable to parse command.")
+		}
+		//
+	}
 }
