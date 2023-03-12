@@ -77,7 +77,7 @@ func commandParser(commands []string) (*Command, error) {
 		} else if len(commands) > 3 && len(commands) == 5 {
 			key := commands[3]
 			if _, ok := CommandOptSlice[key]; ok {
-				command.options[key] = commands[4]
+				command.options[strings.ToUpper(key)] = commands[4]
 			}
 		}
 
