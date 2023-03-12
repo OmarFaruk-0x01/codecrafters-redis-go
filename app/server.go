@@ -1,41 +1,12 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 
 	// Uncomment this block to pass the first stage
 	"net"
-	"os"
 )
-
-func nilChecker(err error) {
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-		return
-	}
-}
-
-func parser(data string) (string, error) {
-	p := regexp.MustCompile("\\$[0-9]+\r\n([^\r\n]+)\r\n")
-	matches := p.FindAllStringSubmatch(data, -1)
-
-	for _, match := range matches {
-		return strings.Trim(match[1], "\r\n"), nil
-	}
-	return "", errors.New("Unable to parse command.")
-}
-
-func sendMessage(conn net.Conn, message string) {
-	conn.Write([]byte(fmt.Sprintf("+%v\r\n", message)))
-}
-
-func sendError(conn net.Conn, message string) {
-	conn.Write([]byte(fmt.Sprintf("-%v\r\n", message)))
-}
 
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -62,7 +33,8 @@ func main() {
 	}()
 
 	go func() {
-		_ = <-closeConnection
+		conn := <-closeConnection
+		fmt.Printf("Disconnected: %v", conn.RemoteAddr().String())
 	}()
 
 	for {
@@ -71,7 +43,6 @@ func main() {
 			go handleConnection(conn, &closeConnection)
 		}
 	}
-
 }
 
 func handleConnection(conn net.Conn, closeConnection *chan net.Conn) {
@@ -93,18 +64,28 @@ func handleConnection(conn net.Conn, closeConnection *chan net.Conn) {
 			fmt.Println("Client disconnected:", conn.RemoteAddr())
 			break
 		}
-		if cmd, err := parser(string(buf[:data])); err == nil {
-			if strings.ToUpper(cmd) == "PING" {
-				sendMessage(conn, "PONG")
-			} else if strings.ToUpper(cmd) == "CLOSE" {
-				*closeConnection <- conn
-				return
+		if commands, err := parser(string(buf[:data])); err == nil {
+			if command, err := commandParser(commands); err == nil {
+				handleCommand(conn, command)
 			} else {
-				sendError(conn, "command not found")
+				sendError(conn, err.Error())
 			}
 		} else {
-			sendError(conn, "unable to parse command.")
+			sendError(conn, err.Error())
 		}
-		//
 	}
+}
+
+func handleCommand(conn net.Conn, command *Command) {
+	switch strings.ToUpper(command.cmd) {
+	case "PING":
+		sendMessage(conn, "PONG")
+		return
+	case "ECHO":
+		sendMessage(conn, command.arguments[0])
+	default:
+		sendError(conn, "command not found")
+		return
+	}
+
 }
