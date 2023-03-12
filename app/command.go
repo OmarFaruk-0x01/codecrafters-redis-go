@@ -64,7 +64,7 @@ func commandParser(commands []string) (*Command, error) {
 		if len(commands) < 3 {
 			return nil, errInsufficientArgError
 		}
-		command.arguments = append(command.arguments, commands[1:2]...)
+		command.arguments = append(command.arguments, commands[1:3]...)
 		if len(commands) > 3 {
 			command.options[commands[3]] = commands[4]
 		}
