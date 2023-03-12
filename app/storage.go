@@ -29,6 +29,7 @@ func (s *Storage) SetItem(key string, data *Data) {
 }
 
 func (s *Storage) GetItem(key string) (Data, error) {
+
 	if data, ok := s.data[key]; ok {
 		return data, nil
 	}

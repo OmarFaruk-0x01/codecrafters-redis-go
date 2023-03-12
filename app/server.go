@@ -98,7 +98,7 @@ func (app *Application) handleCommand(conn net.Conn, command *Command) {
 		fmt.Println(command)
 		key, value := command.arguments[0], command.arguments[1]
 		app.storage.SetItem(key, &Data{value: value})
-		sendMessage(conn, "Ok")
+		sendMessage(conn, "OK")
 	case "GET":
 		fmt.Println(command)
 		key := command.arguments[0]
