@@ -2,16 +2,19 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
 var (
 	errNoKeyFound = errors.New("invalid key")
+	errExpireKey  = errors.New("expire key")
 )
 
 type Data struct {
-	value string
-	exp   time.Time
+	value     string
+	createdAt int64
+	exp       int64
 }
 
 type Storage struct {
@@ -25,13 +28,27 @@ func NewStorage() *Storage {
 }
 
 func (s *Storage) SetItem(key string, data *Data) {
+	data.createdAt = time.Now().UnixMilli()
+	if data.exp != 0 {
+		data.exp = data.createdAt + data.exp
+	}
 	s.data[key] = *data
 }
 
 func (s *Storage) GetItem(key string) (Data, error) {
-
-	if data, ok := s.data[key]; ok {
+	data, ok := s.data[key]
+	if !ok {
+		return Data{}, errNoKeyFound
+	}
+	fmt.Println(data)
+	if data.exp == 0 {
 		return data, nil
 	}
-	return Data{}, errNoKeyFound
+	currentMil := time.Now().UnixMilli()
+	if currentMil > data.exp {
+		return Data{}, errExpireKey
+	}
+
+	return data, nil
+
 }

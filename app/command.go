@@ -14,7 +14,11 @@ var (
 		"SET":  2,
 		"GET":  1,
 	}
+	CommandOptSlice = map[string]bool{
+		"PX": true,
+	}
 	errExtraArgumentError   = errors.New("extra arguments not supported")
+	errInvalidArgumentError = errors.New("arguments not supported")
 	errInsufficientArgError = errors.New("insufficient arguments")
 	errInvalidCmdError      = errors.New("invalid command error")
 )
@@ -41,7 +45,9 @@ func commandParser(commands []string) (*Command, error) {
 		return nil, errInvalidCmdError
 	}
 
-	command := &Command{}
+	command := &Command{
+		options: make(map[string]string),
+	}
 	command.cmd = commands[0]
 
 	switch strings.ToUpper(command.cmd) {
@@ -58,16 +64,23 @@ func commandParser(commands []string) (*Command, error) {
 		fmt.Println(command)
 		return command, nil
 	case "SET":
-		if len(commands) > 4 {
+		if len(commands) > 5 {
 			return nil, errExtraArgumentError
 		}
 		if len(commands) < 3 {
 			return nil, errInsufficientArgError
 		}
 		command.arguments = append(command.arguments, commands[1:3]...)
-		if len(commands) > 3 {
-			command.options[commands[3]] = commands[4]
+
+		if len(commands) > 3 && len(commands) < 5 {
+			return nil, errInsufficientArgError
+		} else if len(commands) > 3 && len(commands) == 5 {
+			key := commands[3]
+			if _, ok := CommandOptSlice[key]; ok {
+				command.options[key] = commands[4]
+			}
 		}
+
 		return command, nil
 	case "GET":
 		if len(commands) > 2 {

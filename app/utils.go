@@ -20,9 +20,9 @@ func sendMessage(conn net.Conn, message string) {
 // 	conn.Write([]byte("$0\r\n\r\n"))
 // }
 
-// func sendNilMessage(conn net.Conn) {
-// 	conn.Write([]byte("*-1\r\n"))
-// }
+func sendNilMessage(conn net.Conn) {
+	conn.Write([]byte("*-1\r\n"))
+}
 
 func sendError(conn net.Conn, message string) {
 	conn.Write([]byte(fmt.Sprintf("-%v\r\n", message)))

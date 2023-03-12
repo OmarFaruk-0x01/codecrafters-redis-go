@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	// Uncomment this block to pass the first stage
@@ -96,14 +98,26 @@ func (app *Application) handleCommand(conn net.Conn, command *Command) {
 		sendMessage(conn, command.arguments[0])
 	case "SET":
 		fmt.Println(command)
+		var exp int64
 		key, value := command.arguments[0], command.arguments[1]
-		app.storage.SetItem(key, &Data{value: value})
+		if len(command.options) > 0 {
+			value, err := strconv.ParseInt(command.options["PX"], 0, 64)
+			if err != nil {
+				sendError(conn, errInvalidArgumentError.Error())
+			}
+			exp = value
+		}
+		app.storage.SetItem(key, &Data{value: value, exp: exp})
 		sendMessage(conn, "OK")
 	case "GET":
 		fmt.Println(command)
 		key := command.arguments[0]
 		value, err := app.storage.GetItem(key)
 		if err != nil {
+			if errors.Is(err, errExpireKey) {
+				sendNilMessage(conn)
+				return
+			}
 			sendError(conn, err.Error())
 			return
 		}
